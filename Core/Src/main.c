@@ -50,16 +50,18 @@ DataPacketTx dataPacketTx;
 DataPacketRx dataPacketRx;
 
 uint8_t receivedByte = 0x00;
-uint8_t bytes[16] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
-				 	 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F
-					};
+uint8_t bytes[2] = {0x00, 0x00};
 
 uint32_t counterTimer1 = 0;
 uint32_t counterTimer2 = 0;
 uint32_t counterTimer3 = 0;
+uint32_t counterTimer4 = 0;
 
 Application app;
 uint8_t stateMachine = 0x00;
+
+uint16_t adcValue = 0;
+Bool adcReadComplete = FALSE;
 
 /* USER CODE END PV */
 
@@ -87,6 +89,7 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 		counterTimer1++;
 		counterTimer2++;
 		counterTimer3++;
+		counterTimer4++;
 	}
 }
 
@@ -217,15 +220,34 @@ int main(void)
 			  break;
 
 		  case 4:
-			  if (counterTimer3 >= DELAY_1000_MILISECONDS)
+			  if (counterTimer3 >= DELAY_250_MILISECONDS)
 			  {
-				  dataPacketTxSetCommand(&dataPacketTx, 0x01);
-				  dataPacketTxSetPayloadData(&dataPacketTx, bytes, 16);
-				  dataPacketTxMount(&dataPacketTx);
-				  dataPacketTxUartSend(&dataPacketTx, huart2);
-				  dataPacketTxPayloadDataClear(&dataPacketTx);
-				  dataPacketTxClear(&dataPacketTx);
+				  if (adcReadComplete == TRUE)
+				  {
+					  bytes[0] = ((adcValue >> 8) & 0x00FF);
+					  bytes[1] = (adcValue & 0x00FF);
+					  dataPacketTxSetCommand(&dataPacketTx, 0x51);
+					  dataPacketTxSetPayloadData(&dataPacketTx, bytes, 2);
+					  dataPacketTxMount(&dataPacketTx);
+					  dataPacketTxUartSend(&dataPacketTx, huart2);
+					  dataPacketTxPayloadDataClear(&dataPacketTx);
+					  dataPacketTxClear(&dataPacketTx);
+					  adcReadComplete = FALSE;
+				  }
 				  counterTimer3 = 0;
+			  }
+			  stateMachine = 5;
+			  break;
+
+		  case 5:
+			  if (counterTimer4 >= DELAY_10_MILISECONDS)
+			  {
+				  HAL_ADC_Start(&hadc1);
+				  HAL_ADC_PollForConversion(&hadc1, 100);
+				  adcValue = HAL_ADC_GetValue(&hadc1);
+				  HAL_ADC_Stop(&hadc1);
+				  adcReadComplete = TRUE;
+				  counterTimer4 = 0;
 			  }
 			  stateMachine = 0;
 			  break;
