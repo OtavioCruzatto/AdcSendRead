@@ -17,6 +17,10 @@ void applicationInit(Application *application, GPIO_TypeDef* ledPort, uint16_t l
 	application->decodeCommandStatus = FALSE;
 	application->dataLenght = 0;
 	memset(application->data, 0x00, QTY_DATA_BYTES);
+
+	application->adcReadComplete = FALSE;
+	application->enableSendAdcRead = FALSE;
+	application->adcValue = 0;
 }
 
 void applicationDecodeCommand(Application *application)
@@ -36,6 +40,17 @@ void applicationDecodeCommand(Application *application)
 		case CMD_TEMPORIZATION_3:
 			application->blinkDelay = DELAY_500_MILISECONDS;
 			application->blinkStatus = TRUE;
+			break;
+
+		case CMD_SET_SEND_ADC_READ_STATUS:
+			if (application->data[0] == 0x00)
+			{
+				application->enableSendAdcRead = FALSE;
+			}
+			else if (application->data[0] == 0x01)
+			{
+				application->enableSendAdcRead = TRUE;
+			}
 			break;
 
 		default:
@@ -84,4 +99,29 @@ void applicationSetData(Application *application, uint8_t *data, uint8_t dataLen
 		application->dataLenght = dataLength;
 		memcpy(application->data, data, dataLength);
 	}
+}
+
+void applicationSetAdcReadCompleteStatus(Application *application, Bool status)
+{
+	application->adcReadComplete = status;
+}
+
+Bool applicationGetAdcReadCompleteStatus(Application *application)
+{
+	return application->adcReadComplete;
+}
+
+Bool applicationGetEnableSendAdcRead(Application *application)
+{
+	return application->enableSendAdcRead;
+}
+
+void applicationSetAdcValue(Application *application, uint16_t value)
+{
+	application->adcValue = value;
+}
+
+uint16_t applicationGetAdcValue(Application *application)
+{
+	return application->adcValue;
 }
